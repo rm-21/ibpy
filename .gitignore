@@ -70,3 +70,5 @@ venv.bak/
 .mypy_cache/
 
 .install.stamp
+
+schemas_gen/*.json
