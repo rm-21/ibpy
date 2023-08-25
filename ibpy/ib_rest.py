@@ -11,7 +11,8 @@ from pydantic import (
     validate_call,
 )
 
-from ibpy.models import Tickle
+from ibpy.endpoints import IBRestEndpoints
+from ibpy.models import Account, Tickle
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -64,12 +65,30 @@ class IBRest(BaseModel):
     async def tickle(
         self,
     ) -> Tickle:
-        res = await self._http_client.get(url=f"{self.base_url}/tickle")
+        res = await self._http_client.get(
+            url=f"{self.base_url}{IBRestEndpoints.TICKLE}"
+        )
         if res.status_code == 200:
             logger.info(
                 f"Successfully pinged the server - Status code: {res.status_code}"
             )
             return TypeAdapter(Tickle).validate_python(res.json())
+
+        logger.info(f"Something went wrong while making the request: {res.text}")
+        raise Exception(f"Something went wrong while making the request: {res.text}")
+
+    @validate_call(config=dict(arbitrary_types_allowed=True))
+    async def get_accounts(
+        self,
+    ) -> list[Account]:
+        res = await self._http_client.get(
+            url=f"{self.base_url}{IBRestEndpoints.PORTFOLIO_ACCOUNTS}"
+        )
+        if res.status_code == 200:
+            logger.info(
+                f"Successfully fetched accounts from the server - Status code: {res.status_code}"
+            )
+            return TypeAdapter(list[Account]).validate_python(res.json())
 
         logger.info(f"Something went wrong while making the request: {res.text}")
         raise Exception(f"Something went wrong while making the request: {res.text}")
