@@ -1,4 +1,6 @@
 import logging
+from types import TracebackType
+from typing import Self, Type
 
 import httpx
 from pydantic import (
@@ -19,6 +21,17 @@ class IBRest(BaseModel):
     api: str = "/v1/api"
     ssl: bool = False
     http_client: httpx.AsyncClient | None = None
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.close_http_client()
 
     @property
     def base_url(self) -> str:
