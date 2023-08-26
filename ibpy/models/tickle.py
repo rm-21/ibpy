@@ -2,8 +2,6 @@
 #   filename:  tickle.json
 #   timestamp: 2023-08-25T10:35:59+00:00
 
-from __future__ import annotations
-
 from pydantic import BaseModel, Field
 
 

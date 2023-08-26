@@ -2,15 +2,11 @@
 #   filename:  list_of_accounts.json
 #   timestamp: 2023-08-25T12:26:07+00:00
 
-from __future__ import annotations
-
-from typing import List
-
 from pydantic import BaseModel, Field
 
 
 class Parent(BaseModel):
-    mmc: List[str]
+    mmc: list[str]
     account_id: str = Field(..., alias="accountId")
     is_m_parent: bool = Field(..., alias="isMParent")
     is_m_child: bool = Field(..., alias="isMChild")

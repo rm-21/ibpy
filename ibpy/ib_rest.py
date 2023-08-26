@@ -12,7 +12,7 @@ from pydantic import (
 )
 
 from ibpy.endpoints import IBRestEndpoints
-from ibpy.models import Account, Tickle
+from ibpy.models import Account, Conids, Tickle
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -89,6 +89,22 @@ class IBRest(BaseModel):
                 f"Successfully fetched accounts from the server - Status code: {res.status_code}"
             )
             return TypeAdapter(list[Account]).validate_python(res.json())
+
+        logger.info(f"Something went wrong while making the request: {res.text}")
+        raise Exception(f"Something went wrong while making the request: {res.text}")
+
+    @validate_call(config=dict(arbitrary_types_allowed=True))
+    async def get_contract_details(self, symbols: list[str]) -> Conids:
+        res = await self._http_client.get(
+            url=f"{self.base_url}{IBRestEndpoints.TRSRV_STOCKS}",
+            params={"symbols": ",".join(symbols)},
+        )
+
+        if res.status_code == 200:
+            logger.info(
+                f"Successfully fetched stock contract details from the server - Status code: {res.status_code}"
+            )
+            return TypeAdapter(Conids).validate_python(res.json())
 
         logger.info(f"Something went wrong while making the request: {res.text}")
         raise Exception(f"Something went wrong while making the request: {res.text}")
