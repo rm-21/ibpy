@@ -1,6 +1,7 @@
+import asyncio
 import logging
 from types import TracebackType
-from typing import Self, Type
+from typing import ClassVar, Self, Type
 
 import httpx
 from pydantic import (
@@ -12,7 +13,8 @@ from pydantic import (
 )
 
 from ibpy.endpoints import IBRestEndpoints
-from ibpy.models import Account, Conids, Tickle
+from ibpy.exceptions import InvalidSymbol
+from ibpy.models import Account, Conids, HistoricalData, Tickle
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -22,6 +24,9 @@ class IBRest(BaseModel):
     api: str = "/v1/api"
     ssl: bool = False
     http_client: httpx.AsyncClient | None = None
+
+    # Private attrs
+    _hist_semaphore: ClassVar[asyncio.Semaphore] = asyncio.Semaphore(3)
 
     async def __aenter__(self) -> Self:
         return self
@@ -58,7 +63,7 @@ class IBRest(BaseModel):
         data: FieldValidationInfo,
     ) -> httpx.AsyncClient:
         if value is None:
-            return httpx.AsyncClient(verify=data.data["ssl"])
+            return httpx.AsyncClient(verify=data.data["ssl"], timeout=120)
         return value
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
@@ -108,6 +113,74 @@ class IBRest(BaseModel):
 
         logger.info(f"Something went wrong while making the request: {res.text}")
         raise Exception(f"Something went wrong while making the request: {res.text}")
+
+    @validate_call(config=dict(arbitrary_types_allowed=True))
+    async def _get_historical_data(
+        self,
+        conid: str,
+        period: str,
+        bar: str,
+        exchange: str | None,
+        outside_rth: bool,
+        since: str,
+    ) -> HistoricalData:
+        res = await self._http_client.get(
+            url=f"{self.base_url}{IBRestEndpoints.HISTORICAL_DATA}",
+            params={
+                "conid": conid,
+                "period": period,
+                "bar": bar,
+                "exchange": exchange,
+                "outsideRth": outside_rth,
+                "since": since,
+            },
+        )
+
+        if res.status_code == 200:
+            logger.info(
+                f"Successfully fetched stock contract details from the server - Status code: {res.status_code}"
+            )
+            return TypeAdapter(HistoricalData).validate_python(res.json())
+
+        logger.info(f"Something went wrong while making the request: {res.text}")
+        raise Exception(f"Something went wrong while making the request: {res.text}")
+
+    @validate_call(config=dict(arbitrary_types_allowed=True))
+    async def get_historical_data(
+        self,
+        symbol: str,
+        period: str,
+        interval: str,
+        from_dt: str,
+    ) -> HistoricalData:
+        async with IBRest._hist_semaphore:
+            # Get contract details
+            contract_details = (
+                await self.get_contract_details(
+                    symbols=[
+                        symbol.upper(),
+                    ]
+                )
+            ).root[symbol.upper()]
+
+            if not contract_details:
+                raise InvalidSymbol(
+                    f"{symbol} is potentially invalid. No contract details found."
+                )
+
+            conid = contract_details[0].contracts[0].conid
+
+            # Get historical data
+            data = await self._get_historical_data(
+                conid=str(conid),
+                period=period,
+                bar=interval,
+                exchange=None,
+                outside_rth=False,
+                since=from_dt,
+            )
+
+            return data
 
     class Config:
         arbitrary_types_allowed: bool = True

@@ -5,3 +5,4 @@ class IBRestEndpoints(StrEnum):
     TICKLE = "/tickle"
     PORTFOLIO_ACCOUNTS = "/portfolio/accounts"
     TRSRV_STOCKS = "/trsrv/stocks"
+    HISTORICAL_DATA = "/iserver/marketdata/history"
