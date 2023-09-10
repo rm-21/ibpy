@@ -44,3 +44,42 @@ if __name__ == "__main__":
     asyncio.run(main=main())
 
 ```
+
+## Pull Historical Data
+```python
+import asyncio
+import datetime as dt
+import logging
+
+from ibpy.ib_rest import IBRest
+
+
+async def main() -> None:
+    from pprint import pprint
+
+    logging.basicConfig(level=logging.INFO)
+
+    async with IBRest() as api:
+        ls = await asyncio.gather(
+            *[
+                api.get_historical_data(
+                    symbol="AAPL",
+                    period="180min",
+                    interval="1min",
+                    from_dt=dt.datetime(2020, 9, 9, 14, 0),
+                ),
+                api.get_historical_data(
+                    symbol="MSFT",
+                    period="15min",
+                    interval="1min",
+                    from_dt=dt.datetime(2023, 1, 1),
+                ),
+            ]
+        )
+
+    print(ls)
+
+
+if __name__ == "__main__":
+    asyncio.run(main=main())
+```

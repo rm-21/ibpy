@@ -41,3 +41,8 @@ class HistoricalData(BaseModel):
     @classmethod
     def parse_start_time(cls, value: str) -> dt.datetime:
         return dt.datetime.strptime(value, "%Y%m%d-%H:%M:%S")
+
+
+class HistoricalDataResp(BaseModel):
+    symbol: str
+    data: list[Datum]
